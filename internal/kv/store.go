@@ -2,24 +2,24 @@ package kv
 
 import "sync"
 
-type Store struct {
+type Store[K comparable, V any] struct {
 	mu   sync.RWMutex
-	data map[string]string
+	data map[K]V
 }
 
-func CreateStore() *Store {
-	return &Store{
-		data: make(map[string]string),
+func CreateStore[K comparable, V any]() *Store[K, V] {
+	return &Store[K, V]{
+		data: make(map[K]V),
 	}
 }
 
-func (s *Store) PutData(key, value string) {
+func (s *Store[K, V]) PutData(key K, value V) {
 	s.mu.Lock() //only 1 goroutine can write at a time
 	defer s.mu.Unlock()
 	s.data[key] = value
 }
 
-func (s *Store) GetData(key string) (string, bool) {
+func (s *Store[K, V]) GetData(key K) (V, bool) {
 	s.mu.RLock() //multiple go routines can read at a time
 	defer s.mu.RUnlock()
 	value, ok := s.data[key]
@@ -27,7 +27,7 @@ func (s *Store) GetData(key string) (string, bool) {
 	return value, ok
 }
 
-func (s *Store) DeleteData(key string) {
+func (s *Store[K, V]) DeleteData(key K) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

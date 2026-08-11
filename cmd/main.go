@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	store := kv.CreateStore()
+	store := kv.CreateStore[string, string]()
 
 	// go store.PutData("name", "pranav")
 	// go store.PutData("age", "21")
