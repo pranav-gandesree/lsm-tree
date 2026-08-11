@@ -2,45 +2,69 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"lsm/internal/kv"
-	"strconv"
-	"sync"
 )
 
-func main() {
-	store := kv.CreateStore[string, string]()
+type User struct {
+	Name string `json:"name"`
+	Age  int    `json:"age"`
+}
 
-	// go store.PutData("name", "pranav")
-	// go store.PutData("age", "21")
+func main() {
+	store := kv.CreateStore[int, User]()
+
+	user1 := User{
+		Name: "deamon salvatore",
+		Age:  160,
+	}
+
+	user2 := User{
+		Name: "daemon targaryen",
+		Age:  45,
+	}
+
+	if err := store.PutData(0, user1); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := store.PutData(1, user2); err != nil {
+		log.Fatal(err)
+	}
 
 	// time.Sleep(time.Second)
+	user1, ok1 := store.GetData(0)
+	user2, ok2 := store.GetData(1)
 
-	// name, ok := store.GetData("name")
-	// age, ok := store.GetData("age")
-	// if ok {
-	// 	fmt.Println("Name:", name)
-	// 	fmt.Println("Age", age)
+	if ok1 {
+		fmt.Println("Name:", user1.Name)
+		fmt.Println("Age:", user1.Age)
+	}
+
+	if ok2 {
+		fmt.Println("Name:", user2.Name)
+		fmt.Println("Age:", user2.Age)
+	}
+
+	// var wg sync.WaitGroup
+
+	// for i := 0; i < 100; i++ {
+	// 	wg.Add(1)
+
+	// 	go func(i int) {
+	// 		defer wg.Done()
+	// 		store.PutData(strconv.Itoa(i), "value")
+	// 	}(i)
 	// }
 
-	var wg sync.WaitGroup
+	// for i := 0; i < 100; i++ {
+	// 	key := strconv.Itoa(i)
 
-	for i := 0; i < 100; i++ {
-		wg.Add(1)
+	// 	value, ok := store.GetData(key)
+	// 	if ok {
+	// 		fmt.Println(key, value)
+	// 	}
+	// }
 
-		go func(i int) {
-			defer wg.Done()
-			store.PutData(strconv.Itoa(i), "value")
-		}(i)
-	}
-
-	for i := 0; i < 100; i++ {
-		key := strconv.Itoa(i)
-
-		value, ok := store.GetData(key)
-		if ok {
-			fmt.Println(key, value)
-		}
-	}
-
-	wg.Wait()
+	// wg.Wait()
 }
