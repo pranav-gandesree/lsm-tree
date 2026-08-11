@@ -14,7 +14,7 @@ type Store[K comparable, V any] struct {
 type WALRecord[K any, V any] struct {
 	Operation string `json:"operation"`
 	Key       K      `json:"key"`
-	Value     V      `json:"value"`
+	Value     *V     `json:"value,omitempty"` // pointer makes value optional
 }
 
 func CreateStore[K comparable, V any]() *Store[K, V] {
@@ -30,7 +30,7 @@ func (s *Store[K, V]) PutData(key K, value V) error {
 	record := WALRecord[K, V]{
 		Operation: "PUT",
 		Key:       key,
-		Value:     value,
+		Value:     &value,
 	}
 	// wal.AppendData(fmt.Sprintf("%v", record))
 
@@ -43,8 +43,6 @@ func (s *Store[K, V]) PutData(key K, value V) error {
 	if err := wal.AppendData(string(data)); err != nil {
 		return err
 	}
-
-	wal.AppendData(string(data))
 
 	s.data[key] = value
 
@@ -66,6 +64,7 @@ func (s *Store[K, V]) DeleteData(key K) error {
 	record := WALRecord[K, V]{
 		Operation: "DELETE",
 		Key:       key,
+		Value:     nil,
 	}
 	// wal.AppendData(fmt.Sprintf("%v", record))
 
@@ -82,8 +81,6 @@ func (s *Store[K, V]) DeleteData(key K) error {
 	if err := wal.AppendData(string(data)); err != nil {
 		return err
 	}
-
-	wal.AppendData(string(data))
 
 	delete(s.data, key)
 

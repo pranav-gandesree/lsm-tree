@@ -15,13 +15,13 @@ func main() {
 	store := kv.CreateStore[int, User]()
 
 	user1 := User{
-		Name: "deamon salvatore",
+		Name: "stefan salvatore",
 		Age:  160,
 	}
 
 	user2 := User{
-		Name: "daemon targaryen",
-		Age:  45,
+		Name: "jon snow",
+		Age:  30,
 	}
 
 	if err := store.PutData(0, user1); err != nil {
@@ -29,6 +29,10 @@ func main() {
 	}
 
 	if err := store.PutData(1, user2); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := store.DeleteData(1); err != nil {
 		log.Fatal(err)
 	}
 
