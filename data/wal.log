@@ -1,3 +1,6 @@
 {"operation":"PUT","key":3,"value":{"name":"katherine","age":500}}
 {"operation":"PUT","key":4,"value":{"name":"jon snow","age":30}}
 {"operation":"DELETE","key":1}
+{"operation":"PUT","key":7,"value":{"name":"ned stark","age":40}}
+{"operation":"PUT","key":8,"value":{"name":"jamie lannister","age":35}}
+{"operation":"DELETE","key":5}

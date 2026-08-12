@@ -13,36 +13,6 @@ type Store[K comparable, V any] struct {
 	data map[K]V
 }
 
-// func CreateStore[K comparable, V any]() (*Store[K, V], err) {
-
-// 	records, err := wal.ReplayWal[K, V]()
-
-// 	if err != nil {
-// 		return nil, fmt.Errorf("replay WAL: %w", err)
-// 	}
-
-// 	for _, record := range records.value {
-// 		if record.Value != nil {
-// 			fmt.Printf(
-// 				"op=%s key=%v value=%v\n",
-// 				record.Op,
-// 				record.Key,
-// 				*record.Value,
-// 			)
-// 		} else {
-// 			fmt.Printf(
-// 				"op=%s key=%v value=<nil>\n",
-// 				record.Op,
-// 				record.Key,
-// 			)
-// 		}
-// 	}
-
-// 	return &Store[K, V]{
-// 		data: make(map[K]V),
-// 	}, nil
-// }
-
 func CreateStore[K comparable, V any]() (*Store[K, V], error) {
 	records, err := wal.ReplayWal[K, V]()
 	if err != nil {

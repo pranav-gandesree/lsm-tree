@@ -20,24 +20,24 @@ func main() {
 	store.PrintMap()
 
 	user1 := User{
-		Name: "katherine",
-		Age:  500,
+		Name: "ned stark",
+		Age:  40,
 	}
 
 	user2 := User{
-		Name: "jon snow",
-		Age:  30,
+		Name: "jamie lannister",
+		Age:  35,
 	}
 
-	if err := store.PutData(3, user1); err != nil {
+	if err := store.PutData(7, user1); err != nil {
 		log.Fatal(err)
 	}
 
-	if err := store.PutData(4, user2); err != nil {
+	if err := store.PutData(8, user2); err != nil {
 		log.Fatal(err)
 	}
 
-	if err := store.DeleteData(1); err != nil {
+	if err := store.DeleteData(5); err != nil {
 		log.Fatal(err)
 	}
 
