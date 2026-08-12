@@ -2,6 +2,7 @@ package kv
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"lsm/internal/wal"
 	"sync"
@@ -11,23 +12,85 @@ type Store[K comparable, V any] struct {
 	mu   sync.RWMutex
 	data map[K]V
 }
-type WALRecord[K any, V any] struct {
-	Operation string `json:"operation"`
-	Key       K      `json:"key"`
-	Value     *V     `json:"value,omitempty"` // pointer makes value optional
-}
 
-func CreateStore[K comparable, V any]() *Store[K, V] {
-	return &Store[K, V]{
+// func CreateStore[K comparable, V any]() (*Store[K, V], err) {
+
+// 	records, err := wal.ReplayWal[K, V]()
+
+// 	if err != nil {
+// 		return nil, fmt.Errorf("replay WAL: %w", err)
+// 	}
+
+// 	for _, record := range records.value {
+// 		if record.Value != nil {
+// 			fmt.Printf(
+// 				"op=%s key=%v value=%v\n",
+// 				record.Op,
+// 				record.Key,
+// 				*record.Value,
+// 			)
+// 		} else {
+// 			fmt.Printf(
+// 				"op=%s key=%v value=<nil>\n",
+// 				record.Op,
+// 				record.Key,
+// 			)
+// 		}
+// 	}
+
+// 	return &Store[K, V]{
+// 		data: make(map[K]V),
+// 	}, nil
+// }
+
+func CreateStore[K comparable, V any]() (*Store[K, V], error) {
+	records, err := wal.ReplayWal[K, V]()
+	if err != nil {
+		return nil, fmt.Errorf("ReplayWAL failed: %w", err)
+	}
+
+	store := &Store[K, V]{
 		data: make(map[K]V),
 	}
+
+	for _, record := range records {
+		fmt.Printf(
+			"operation=%s key=%v value=%v\n",
+			record.Operation,
+			record.Key,
+			record.Value,
+		)
+
+		switch record.Operation {
+		case "PUT":
+			if record.Value == nil {
+				return nil, fmt.Errorf(
+					"invalid PUT record: key=%v has nil value",
+					record.Key,
+				)
+			}
+
+			store.data[record.Key] = *record.Value
+
+		case "DELETE":
+			delete(store.data, record.Key)
+
+		default:
+			return nil, fmt.Errorf(
+				"unknown WAL operation: %q",
+				record.Operation,
+			)
+		}
+	}
+
+	return store, nil
 }
 
 func (s *Store[K, V]) PutData(key K, value V) error {
 	s.mu.Lock() //only 1 goroutine can write at a time
 	defer s.mu.Unlock()
 
-	record := WALRecord[K, V]{
+	record := wal.WALRecord[K, V]{
 		Operation: "PUT",
 		Key:       key,
 		Value:     &value,
@@ -61,7 +124,7 @@ func (s *Store[K, V]) DeleteData(key K) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	record := WALRecord[K, V]{
+	record := wal.WALRecord[K, V]{
 		Operation: "DELETE",
 		Key:       key,
 		Value:     nil,
@@ -85,4 +148,15 @@ func (s *Store[K, V]) DeleteData(key K) error {
 	delete(s.data, key)
 
 	return nil
+}
+
+func (s *Store[K, V]) PrintMap() {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	fmt.Println("Current map:")
+
+	for key, value := range s.data {
+		fmt.Printf("key=%v, value=%+v\n", key, value)
+	}
 }

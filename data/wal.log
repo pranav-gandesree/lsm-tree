@@ -1,3 +1,3 @@
-{"operation":"PUT","key":0,"value":{"name":"stefan salvatore","age":160}}
-{"operation":"PUT","key":1,"value":{"name":"jon snow","age":30}}
+{"operation":"PUT","key":3,"value":{"name":"katherine","age":500}}
+{"operation":"PUT","key":4,"value":{"name":"jon snow","age":30}}
 {"operation":"DELETE","key":1}

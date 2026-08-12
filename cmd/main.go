@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"lsm/internal/kv"
 )
@@ -12,11 +11,17 @@ type User struct {
 }
 
 func main() {
-	store := kv.CreateStore[int, User]()
+	store, err := kv.CreateStore[int, User]()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	store.PrintMap()
 
 	user1 := User{
-		Name: "stefan salvatore",
-		Age:  160,
+		Name: "katherine",
+		Age:  500,
 	}
 
 	user2 := User{
@@ -24,11 +29,11 @@ func main() {
 		Age:  30,
 	}
 
-	if err := store.PutData(0, user1); err != nil {
+	if err := store.PutData(3, user1); err != nil {
 		log.Fatal(err)
 	}
 
-	if err := store.PutData(1, user2); err != nil {
+	if err := store.PutData(4, user2); err != nil {
 		log.Fatal(err)
 	}
 
@@ -36,19 +41,21 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// time.Sleep(time.Second)
-	user1, ok1 := store.GetData(0)
-	user2, ok2 := store.GetData(1)
+	store.PrintMap()
 
-	if ok1 {
-		fmt.Println("Name:", user1.Name)
-		fmt.Println("Age:", user1.Age)
-	}
+	// // time.Sleep(time.Second)
+	// user1, ok1 := store.GetData(0)
+	// user2, ok2 := store.GetData(1)
 
-	if ok2 {
-		fmt.Println("Name:", user2.Name)
-		fmt.Println("Age:", user2.Age)
-	}
+	// if ok1 {
+	// 	fmt.Println("Name:", user1.Name)
+	// 	fmt.Println("Age:", user1.Age)
+	// }
+
+	// if ok2 {
+	// 	fmt.Println("Name:", user2.Name)
+	// 	fmt.Println("Age:", user2.Age)
+	// }
 
 	// var wg sync.WaitGroup
 
