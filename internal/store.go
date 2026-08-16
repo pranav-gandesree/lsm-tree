@@ -1,10 +1,9 @@
-package kv
+package store
 
 import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"lsm/internal/wal"
 	"sync"
 )
 
@@ -14,7 +13,7 @@ type Store[K comparable, V any] struct {
 }
 
 func CreateStore[K comparable, V any]() (*Store[K, V], error) {
-	records, err := wal.ReplayWal[K, V]()
+	records, err := ReplayWal[K, V]()
 	if err != nil {
 		return nil, fmt.Errorf("ReplayWAL failed: %w", err)
 	}
@@ -60,7 +59,7 @@ func (s *Store[K, V]) PutData(key K, value V) error {
 	s.mu.Lock() //only 1 goroutine can write at a time
 	defer s.mu.Unlock()
 
-	record := wal.WALRecord[K, V]{
+	record := WALRecord[K, V]{
 		Operation: "PUT",
 		Key:       key,
 		Value:     &value,
@@ -73,7 +72,7 @@ func (s *Store[K, V]) PutData(key K, value V) error {
 		return err
 	}
 
-	if err := wal.AppendData(string(data)); err != nil {
+	if err := AppendData(string(data)); err != nil {
 		return err
 	}
 
@@ -94,7 +93,7 @@ func (s *Store[K, V]) DeleteData(key K) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	record := wal.WALRecord[K, V]{
+	record := WALRecord[K, V]{
 		Operation: "DELETE",
 		Key:       key,
 		Value:     nil,
@@ -111,7 +110,7 @@ func (s *Store[K, V]) DeleteData(key K) error {
 	// 	return err
 	// }
 
-	if err := wal.AppendData(string(data)); err != nil {
+	if err := AppendData(string(data)); err != nil {
 		return err
 	}
 

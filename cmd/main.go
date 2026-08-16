@@ -2,7 +2,8 @@ package main
 
 import (
 	"log"
-	"lsm/internal/kv"
+
+	kv "github.com/pranav-gandesree/lsm-tree/internal"
 )
 
 type User struct {
