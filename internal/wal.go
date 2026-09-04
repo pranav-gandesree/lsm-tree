@@ -1,4 +1,4 @@
-package store
+package kv
 
 import (
 	"bufio"
@@ -8,10 +8,10 @@ import (
 	"os"
 )
 
-type WALRecord[K any, V any] struct {
-	Operation string `json:"operation"`
-	Key       K      `json:"key"`
-	Value     *V     `json:"value,omitempty"` // pointer makes value optional
+type WALRecord struct {
+	Operation string  `json:"operation"`
+	Key       string  `json:"key"`
+	Value     *string `json:"value,omitempty"` // pointer makes value optional
 }
 
 func AppendData(data string) error {
@@ -35,12 +35,12 @@ func AppendData(data string) error {
 	return err
 }
 
-func ReplayWal[K comparable, V any]() ([]WALRecord[K, V], error) {
+func ReplayWal() ([]WALRecord, error) {
 	f, err := os.Open("data/wal.log")
 
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return []WALRecord[K, V]{}, nil
+			return []WALRecord{}, nil
 		}
 		return nil, err
 	}
@@ -48,10 +48,10 @@ func ReplayWal[K comparable, V any]() ([]WALRecord[K, V], error) {
 
 	scanner := bufio.NewScanner(f)
 
-	var records []WALRecord[K, V]
+	var records []WALRecord
 	for scanner.Scan() {
 		line := scanner.Text()
-		var record WALRecord[K, V]
+		var record WALRecord
 		if err := json.Unmarshal([]byte(line), &record); err != nil {
 			return nil, err
 		}

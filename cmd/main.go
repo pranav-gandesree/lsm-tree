@@ -6,47 +6,32 @@ import (
 	kv "github.com/pranav-gandesree/lsm-tree/internal"
 )
 
-type User struct {
-	Name string `json:"name"`
-	Age  int    `json:"age"`
-}
-
 func main() {
-	store, err := kv.CreateStore[int, User]()
+	memtable, err := kv.CreateMemTable()
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	store.PrintMap()
+	memtable.PrintMap()
 
-	user1 := User{
-		Name: "ned stark",
-		Age:  40,
-	}
-
-	user2 := User{
-		Name: "jamie lannister",
-		Age:  35,
-	}
-
-	if err := store.PutData(7, user1); err != nil {
+	if err := memtable.PutData("p", "hi"); err != nil {
 		log.Fatal(err)
 	}
 
-	if err := store.PutData(8, user2); err != nil {
+	if err := memtable.PutData("r", "helloe"); err != nil {
 		log.Fatal(err)
 	}
 
-	if err := store.DeleteData(5); err != nil {
+	if err := memtable.DeleteData("r"); err != nil {
 		log.Fatal(err)
 	}
 
-	store.PrintMap()
+	memtable.PrintMap()
 
 	// // time.Sleep(time.Second)
-	// user1, ok1 := store.GetData(0)
-	// user2, ok2 := store.GetData(1)
+	// user1, ok1 := store.GetData("0")
+	// user2, ok2 := store.GetData("1")
 
 	// if ok1 {
 	// 	fmt.Println("Name:", user1.Name)

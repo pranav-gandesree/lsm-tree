@@ -1,25 +1,32 @@
-package store
+package kv
 
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"sync"
 )
 
-type Store[K comparable, V any] struct {
+type MemTable struct {
 	mu   sync.RWMutex
-	data map[K]V
+	data map[string]string
 }
 
-func CreateStore[K comparable, V any]() (*Store[K, V], error) {
-	records, err := ReplayWal[K, V]()
+func (m *MemTable) Flush() error {
+	m.mu.RLock()
+	defer m.mu.Unlock()
+
+	return nil
+}
+
+func CreateMemTable() (*MemTable, error) {
+	records, err := ReplayWal()
+
 	if err != nil {
 		return nil, fmt.Errorf("ReplayWAL failed: %w", err)
 	}
 
-	store := &Store[K, V]{
-		data: make(map[K]V),
+	memtable := &MemTable{
+		data: make(map[string]string),
 	}
 
 	for _, record := range records {
@@ -39,10 +46,10 @@ func CreateStore[K comparable, V any]() (*Store[K, V], error) {
 				)
 			}
 
-			store.data[record.Key] = *record.Value
+			memtable.data[record.Key] = *record.Value
 
 		case "DELETE":
-			delete(store.data, record.Key)
+			delete(memtable.data, record.Key)
 
 		default:
 			return nil, fmt.Errorf(
@@ -52,14 +59,14 @@ func CreateStore[K comparable, V any]() (*Store[K, V], error) {
 		}
 	}
 
-	return store, nil
+	return memtable, nil
 }
 
-func (s *Store[K, V]) PutData(key K, value V) error {
+func (s *MemTable) PutData(key string, value string) error {
 	s.mu.Lock() //only 1 goroutine can write at a time
 	defer s.mu.Unlock()
 
-	record := WALRecord[K, V]{
+	record := WALRecord{
 		Operation: "PUT",
 		Key:       key,
 		Value:     &value,
@@ -69,6 +76,7 @@ func (s *Store[K, V]) PutData(key K, value V) error {
 	data, err := json.Marshal(record)
 
 	if err != nil {
+
 		return err
 	}
 
@@ -81,7 +89,7 @@ func (s *Store[K, V]) PutData(key K, value V) error {
 	return nil
 }
 
-func (s *Store[K, V]) GetData(key K) (V, bool) {
+func (s *MemTable) GetData(key string) (string, bool) {
 	s.mu.RLock() //multiple go routines can read at a time
 	defer s.mu.RUnlock()
 	value, ok := s.data[key]
@@ -89,11 +97,11 @@ func (s *Store[K, V]) GetData(key K) (V, bool) {
 	return value, ok
 }
 
-func (s *Store[K, V]) DeleteData(key K) error {
+func (s *MemTable) DeleteData(key string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	record := WALRecord[K, V]{
+	record := WALRecord{
 		Operation: "DELETE",
 		Key:       key,
 		Value:     nil,
@@ -102,7 +110,7 @@ func (s *Store[K, V]) DeleteData(key K) error {
 
 	data, err := json.Marshal(record)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	// 	err = wal.AppendData(string(data))
@@ -119,7 +127,7 @@ func (s *Store[K, V]) DeleteData(key K) error {
 	return nil
 }
 
-func (s *Store[K, V]) PrintMap() {
+func (s *MemTable) PrintMap() {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
