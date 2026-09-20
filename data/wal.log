@@ -1,6 +1,9 @@
-{"operation":"PUT","key":"7","value":{"name":"ned stark","age":40}}
-{"operation":"PUT","key":"8","value":{"name":"jamie lannister","age":35}}
-{"operation":"DELETE","key":"5"}
-{"operation":"PUT","key":"p","value":{"name":"pranav","age":23}}
-{"operation":"PUT","key":"r","value":{"name":"ramesh","age":20}}
-{"operation":"DELETE","key":"r"}
+{"operation":"PUT","key":"p","value":"hi"}
+{"operation":"PUT","key":"q","value":"helloe"}
+{"operation":"DELETE","key":"q"}
+{"operation":"PUT","key":"1","value":"hi"}
+{"operation":"PUT","key":"2","value":"helloe"}
+{"operation":"DELETE","key":"1"}
+{"operation":"PUT","key":"1","value":"hi"}
+{"operation":"PUT","key":"2","value":"helloe"}
+{"operation":"DELETE","key":"1"}

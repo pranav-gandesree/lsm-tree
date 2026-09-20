@@ -15,15 +15,15 @@ func main() {
 
 	memtable.PrintMap()
 
-	if err := memtable.PutData("p", "hi"); err != nil {
+	if err := memtable.PutData("1", "hi"); err != nil {
 		log.Fatal(err)
 	}
 
-	if err := memtable.PutData("r", "helloe"); err != nil {
+	if err := memtable.PutData("2", "helloe"); err != nil {
 		log.Fatal(err)
 	}
 
-	if err := memtable.DeleteData("r"); err != nil {
+	if err := memtable.DeleteData("1"); err != nil {
 		log.Fatal(err)
 	}
 

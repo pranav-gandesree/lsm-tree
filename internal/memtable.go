@@ -3,19 +3,53 @@ package kv
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"sync"
 )
+
+const MemTableLimit = 5
 
 type MemTable struct {
 	mu   sync.RWMutex
 	data map[string]string
 }
 
-func (m *MemTable) Flush() error {
-	m.mu.RLock()
-	defer m.mu.Unlock()
+//it flushes the active mem table while holding its read lock
+// func (m *MemTable) FlushToSSTable() error {
+// 	m.mu.RLock()
+// 	defer m.mu.RUnlock()
 
-	return nil
+// 	records := make([]SSTableRecord, 0, len(m.data))
+
+// 	for key, value := range m.data {
+// 		records = append(records, SSTableRecord{
+// 			Key:   key,
+// 			Value: value,
+// 		})
+// 	}
+
+// 	sort.Slice(records, func(i, j int) bool {
+// 		return records[i].Key < records[j].Key
+// 	})
+
+// 	return createSSTable(records)
+// }
+
+func FlushToSSTable(data map[string]string) error {
+	records := make([]SSTableRecord, 0, len(data))
+
+	for key, value := range data {
+		records = append(records, SSTableRecord{
+			Key:   key,
+			Value: value,
+		})
+	}
+
+	sort.Slice(records, func(i, j int) bool {
+		return records[i].Key < records[j].Key
+	})
+
+	return createSSTable(records)
 }
 
 func CreateMemTable() (*MemTable, error) {
@@ -64,29 +98,44 @@ func CreateMemTable() (*MemTable, error) {
 
 func (s *MemTable) PutData(key string, value string) error {
 	s.mu.Lock() //only 1 goroutine can write at a time
-	defer s.mu.Unlock()
 
 	record := WALRecord{
 		Operation: "PUT",
 		Key:       key,
 		Value:     &value,
 	}
-	// wal.AppendData(fmt.Sprintf("%v", record))
 
 	data, err := json.Marshal(record)
 
 	if err != nil {
-
+		s.mu.Unlock()
 		return err
 	}
 
 	if err := AppendData(string(data)); err != nil {
+		s.mu.Unlock()
 		return err
 	}
 
 	s.data[key] = value
 
-	return nil
+	//check if memtable is full,
+	if len(s.data) < MemTableLimit {
+		s.mu.Unlock()
+		return nil
+	}
+
+	//if memtable is full, make the current table immutable
+	immutableData := s.data
+
+	// then create a new active table
+	s.data = make(map[string]string)
+
+	s.mu.Unlock()
+
+	// flush immutable memtable
+	return FlushToSSTable(immutableData)
+
 }
 
 func (s *MemTable) GetData(key string) (string, bool) {

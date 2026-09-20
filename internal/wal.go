@@ -49,10 +49,12 @@ func ReplayWal() ([]WALRecord, error) {
 	scanner := bufio.NewScanner(f)
 
 	var records []WALRecord
+
 	for scanner.Scan() {
 		line := scanner.Text()
+
 		var record WALRecord
-		if err := json.Unmarshal([]byte(line), &record); err != nil {
+		if err := json.Unmarshal([]byte(line), &record); err != nil { //unmarshel convert json to go struct
 			return nil, err
 		}
 		records = append(records, record)
