@@ -1,9 +1,3 @@
-{"operation":"PUT","key":"p","value":"hi"}
-{"operation":"PUT","key":"q","value":"helloe"}
-{"operation":"DELETE","key":"q"}
-{"operation":"PUT","key":"1","value":"hi"}
-{"operation":"PUT","key":"2","value":"helloe"}
-{"operation":"DELETE","key":"1"}
 {"operation":"PUT","key":"1","value":"hi"}
 {"operation":"PUT","key":"2","value":"helloe"}
 {"operation":"DELETE","key":"1"}

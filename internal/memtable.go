@@ -7,11 +7,12 @@ import (
 	"sync"
 )
 
-const MemTableLimit = 5
+const MemTableLimit = 2
 
 type MemTable struct {
-	mu   sync.RWMutex
-	data map[string]string
+	mu             sync.RWMutex
+	data           map[string]string
+	ssTableCounter int
 }
 
 //it flushes the active mem table while holding its read lock
@@ -35,7 +36,7 @@ type MemTable struct {
 // 	return createSSTable(records)
 // }
 
-func FlushToSSTable(data map[string]string) error {
+func FlushToSSTable(data map[string]string, ssTableCounter int) error {
 	records := make([]SSTableRecord, 0, len(data))
 
 	for key, value := range data {
@@ -49,7 +50,7 @@ func FlushToSSTable(data map[string]string) error {
 		return records[i].Key < records[j].Key
 	})
 
-	return createSSTable(records)
+	return createSSTable(records, ssTableCounter)
 }
 
 func CreateMemTable() (*MemTable, error) {
@@ -60,7 +61,8 @@ func CreateMemTable() (*MemTable, error) {
 	}
 
 	memtable := &MemTable{
-		data: make(map[string]string),
+		data:           make(map[string]string),
+		ssTableCounter: 1,
 	}
 
 	for _, record := range records {
@@ -130,11 +132,14 @@ func (s *MemTable) PutData(key string, value string) error {
 
 	// then create a new active table
 	s.data = make(map[string]string)
+	//increment the counter if memtable is full, so it can create new sstable file
+	sstableId := s.ssTableCounter
+	sstableId++
 
 	s.mu.Unlock()
 
 	// flush immutable memtable
-	return FlushToSSTable(immutableData)
+	return FlushToSSTable(immutableData, sstableId)
 
 }
 
