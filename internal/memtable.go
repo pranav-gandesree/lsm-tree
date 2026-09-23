@@ -2,6 +2,7 @@ package kv
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"sync"
@@ -9,10 +10,17 @@ import (
 
 const MemTableLimit = 2
 
+var ErrNotFound = errors.New("key not found")
+var ErrDeleted = errors.New("key deleted")
+
+type MemTableValue struct {
+	Value     string
+	Tombstone bool
+}
 type MemTable struct {
 	mu             sync.RWMutex
-	data           map[string]string
-	ssTableCounter int
+	data           map[string]MemTableValue
+	sstableCounter int
 }
 
 //it flushes the active mem table while holding its read lock
@@ -36,13 +44,14 @@ type MemTable struct {
 // 	return createSSTable(records)
 // }
 
-func FlushToSSTable(data map[string]string, ssTableCounter int) error {
+func FlushToSSTable(data map[string]MemTableValue, ssTableCounter int) error {
 	records := make([]SSTableRecord, 0, len(data))
 
 	for key, value := range data {
 		records = append(records, SSTableRecord{
-			Key:   key,
-			Value: value,
+			Key:       key,
+			Value:     value.Value,
+			Tombstone: value.Tombstone,
 		})
 	}
 
@@ -61,8 +70,8 @@ func CreateMemTable() (*MemTable, error) {
 	}
 
 	memtable := &MemTable{
-		data:           make(map[string]string),
-		ssTableCounter: 1,
+		data:           make(map[string]MemTableValue),
+		sstableCounter: 0,
 	}
 
 	for _, record := range records {
@@ -82,10 +91,15 @@ func CreateMemTable() (*MemTable, error) {
 				)
 			}
 
-			memtable.data[record.Key] = *record.Value
+			memtable.data[record.Key] = MemTableValue{
+				Value:     *record.Value,
+				Tombstone: false,
+			}
 
 		case "DELETE":
-			delete(memtable.data, record.Key)
+			memtable.data[record.Key] = MemTableValue{
+				Tombstone: true,
+			}
 
 		default:
 			return nil, fmt.Errorf(
@@ -119,7 +133,10 @@ func (s *MemTable) PutData(key string, value string) error {
 		return err
 	}
 
-	s.data[key] = value
+	s.data[key] = MemTableValue{
+		Value:     value,
+		Tombstone: false,
+	}
 
 	//check if memtable is full,
 	if len(s.data) < MemTableLimit {
@@ -131,10 +148,10 @@ func (s *MemTable) PutData(key string, value string) error {
 	immutableData := s.data
 
 	// then create a new active table
-	s.data = make(map[string]string)
+	s.data = make(map[string]MemTableValue)
 	//increment the counter if memtable is full, so it can create new sstable file
-	sstableId := s.ssTableCounter
-	sstableId++
+	s.sstableCounter++
+	sstableId := s.sstableCounter
 
 	s.mu.Unlock()
 
@@ -143,12 +160,21 @@ func (s *MemTable) PutData(key string, value string) error {
 
 }
 
-func (s *MemTable) GetData(key string) (string, bool) {
+func (s *MemTable) GetData(key string) (string, error) {
 	s.mu.RLock() //multiple go routines can read at a time
 	defer s.mu.RUnlock()
-	value, ok := s.data[key]
 
-	return value, ok
+	entry, ok := s.data[key]
+
+	if !ok {
+		return "", ErrNotFound
+	}
+
+	if entry.Tombstone {
+		return "", ErrDeleted
+	}
+
+	return entry.Value, nil
 }
 
 func (s *MemTable) DeleteData(key string) error {
@@ -160,25 +186,31 @@ func (s *MemTable) DeleteData(key string) error {
 		Key:       key,
 		Value:     nil,
 	}
-	// wal.AppendData(fmt.Sprintf("%v", record))
 
 	data, err := json.Marshal(record)
 	if err != nil {
 		return err
 	}
 
-	// 	err = wal.AppendData(string(data))
-	// if err != nil {
-	// 	return err
-	// }
-
 	if err := AppendData(string(data)); err != nil {
 		return err
 	}
 
-	delete(s.data, key)
+	s.data[key] = MemTableValue{
+		Value:     "",
+		Tombstone: true,
+	}
 
 	return nil
+}
+
+// LatestSSTableID returns the id of the most recently flushed SSTable.
+// Callers use it as the starting point for Get's newest-to-oldest search.
+func (s *MemTable) LatestSSTableID() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.sstableCounter
 }
 
 func (s *MemTable) PrintMap() {

@@ -2,13 +2,16 @@ package kv
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 )
 
 type SSTableRecord struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
+	Key       string `json:"key"`
+	Value     string `json:"value"`
+	Tombstone bool   `json:"tombstone"`
 }
 
 func createSSTable(records []SSTableRecord, ssTableCounter int) error {
@@ -31,60 +34,86 @@ func createSSTable(records []SSTableRecord, ssTableCounter int) error {
 	return nil
 }
 
-func ReadSSTable(filename string) ([]SSTableRecord, error) {
-	file, err := os.Open(filename)
+func (s *MemTable) Get(key string, latestSSTableID int) (string, error) {
+	// check active memtable first
+	value, err := s.GetData(key)
 
+	if err == nil {
+		return value, nil
+	}
+
+	// key was deleted in active memtable
+	if errors.Is(err, ErrDeleted) {
+		return "", ErrNotFound
+	}
+
+	// if not found, continue with sstables
+	if !errors.Is(err, ErrNotFound) {
+		return "", err
+	}
+
+	// search ssables newest to olldest
+	return GetFromSSTables(key, latestSSTableID)
+}
+
+func GetFromSSTable(filename string, key string) (string, error) {
+	file, err := os.Open(filename)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	defer file.Close()
 
-	var records []SSTableRecord
-
 	decoder := json.NewDecoder(file)
 
-	for decoder.More() {
+	for {
 		var record SSTableRecord
 
-		if err := decoder.Decode(&record); err != nil {
-			return nil, err
+		err := decoder.Decode(&record)
+
+		if err == io.EOF {
+			break
 		}
 
-		records = append(records, record)
-	}
+		if err != nil {
+			return "", err
+		}
 
-	return records, nil
-
-}
-
-func GetFromSSTable(filename string, key string) (string, bool, error) {
-	records, err := ReadSSTable(filename)
-	if err != nil {
-		return "", false, err
-	}
-
-	for _, record := range records {
 		if record.Key == key {
-			return record.Value, true, nil
+			if record.Tombstone {
+				return "", ErrDeleted
+			}
+
+			return record.Value, nil
+		}
+
+		if record.Key > key {
+			break
 		}
 	}
 
-	return "", false, nil
+	return "", ErrNotFound
 }
 
-func GetFromSSTables(key string, latestSSTableId int) (string, bool, error) {
-	for id := latestSSTableId; id >= 1; id-- {
+func GetFromSSTables(key string, latestSSTableID int) (string, error) {
+	for id := latestSSTableID; id >= 1; id-- {
 		filename := fmt.Sprintf("data/sstable-%d.db", id)
 
-		value, found, err := GetFromSSTable(filename, key)
-		if err != nil {
-			return "", false, err
+		value, err := GetFromSSTable(filename, key)
+
+		if err == nil {
+			return value, nil
 		}
 
-		if found {
-			return value, true, nil
+		if errors.Is(err, ErrDeleted) {
+			return "", ErrNotFound
 		}
+
+		if errors.Is(err, ErrNotFound) {
+			continue
+		}
+
+		return "", err
 	}
 
-	return "", false, nil
+	return "", ErrNotFound
 }
