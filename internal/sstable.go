@@ -11,6 +11,7 @@ import (
 type SSTableRecord struct {
 	Key       string `json:"key"`
 	Value     string `json:"value"`
+	Sequence  uint64 `json:"sequence"`
 	Tombstone bool   `json:"tombstone"`
 }
 
@@ -32,6 +33,35 @@ func createSSTable(records []SSTableRecord, ssTableCounter int) error {
 		}
 	}
 	return nil
+}
+
+// reads every record in sstable file
+//used for compaction
+func readSSTable(filename string) ([]SSTableRecord, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	decoder := json.NewDecoder(file)
+
+	var records []SSTableRecord
+	for {
+		var record SSTableRecord
+
+		err := decoder.Decode(&record)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		records = append(records, record)
+	}
+
+	return records, nil
 }
 
 func (s *MemTable) Get(key string, latestSSTableID int) (string, error) {

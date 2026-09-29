@@ -51,6 +51,7 @@ func FlushToSSTable(data map[string]MemTableValue, ssTableCounter int) error {
 		records = append(records, SSTableRecord{
 			Key:       key,
 			Value:     value.Value,
+			Sequence:  uint64(ssTableCounter),
 			Tombstone: value.Tombstone,
 		})
 	}
